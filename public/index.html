@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>RealEstateAPI | AutoComplete</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <section id="app" class="wrapper bg-slate-200 py-12 min-h-screen">
+        <auto-complete></auto-complete>
+    </section>
+
+   <template id="auto-complete">
+        
+        <div class="py-6 px-6 w-2/4 mx-auto bg-white shadow rounded-lg">
+            <div class="">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Address AutoComplete</h3>
+                <div class="max-w-xl text-sm text-gray-500 mb-3">
+                    <p>Blazing fast address auto-complete <br>from <span class="font-semibold">RealEstateAPI.com</span></p>
+                </div>
+                <div class="max-w-xl mb-2">
+                    <label class="block text-sm font-medium text-gray-700"> API Key </label>
+                    <input type="text" name="apiKey" id="apiKey" v-model="apiKey" autocomplete="off" autofill="false"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="YOUR-API-KEY">
+                </div>
+                <div class="flex">
+                    <div class="flex items-center mr-4">
+                        <input id="inline-radio" type="radio" v-model="library" value="axios" name="inline-radio-group" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2">
+                        <label for="inline-radio" class="ml-2 text-sm font-bold text-gray-900">Axios</label>
+                    </div>
+                    <div class="flex items-center mr-4">
+                        <input id="inline-2-radio" type="radio" v-model="library" value="fetch" name="inline-radio-group" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2">
+                        <label for="inline-2-radio" class="ml-2 text-sm font-bold text-gray-900">Fetch API</label>
+                    </div>
+                    <div class="flex items-center mr-4">
+                        <input id="inline-checked-radio" type="radio" v-model="library" value="xhr" name="inline-radio-group" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2">
+                        <label for="inline-checked-radio" class="ml-2 text-sm font-bold text-gray-900">XMLHttpRequest</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700"> Address </label>
+                <div class="mt-1">
+                    <input type="text" name="email" id="email" v-model="searchQuery" autocomplete="off" autofill="false"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="123 Somestreet Ave., Anytown US">
+                </div>
+                <ul v-if="addresses.length" class="mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm" id="options" role="listbox">
+                    <div v-for="result in addresses">
+                        <li class="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-900" tabindex="-1">
+                            <span class="block truncate">{{ result.address }}</span>
+                        </li>
+                    </div>
+                </ul>
+            </div>
+        </div>
+        
+   </template>
+
+    <script src="js/vue.3.js"></script>
+
+    <script>
+        (function () {
+
+            const app = Vue.createApp({});
+
+            app.component('autoComplete', {
+                data() {
+                    return {
+                        apiUrl: 'https://api.realestateapi.com/v2/AutoComplete',
+                        library: 'axios',
+                        apiKey: null,
+                        query: null,
+                        results: []
+                    }
+                },
+                computed: {
+                    
+                    searchQuery: {
+                        get: function () {
+                            return this.query;
+                        },
+                        set: function (query) {
+                            this.query = query;
+                            this.search();
+                        }
+                    },
+
+                    addresses: {
+                        get: function () {
+                            return this.results;
+                        },
+                        set: function (results) {
+                            this.results = results.filter(result => result.searchType === 'A');
+                        }
+                    }
+
+                },
+                methods: {
+
+                    search() {
+                        if (!this.searchQuery) this.results = [];
+                        if (this.searchQuery.length < 3) return;
+                        switch (this.library) {
+                            case 'axios':
+                                console.log('Using Axios...');
+                                this.searchAxios();
+                                break;
+                            case 'fetch':
+                                console.log('Using Fetch');
+                                this.searchFetch();
+                                break;
+                            case 'xhr':
+                                console.log('Using XHR');
+                                this.searchXhr();
+                                break;
+                            default:
+                                break;
+                        }
+                    },
+                    
+                    searchAxios() {
+
+                        axios.post(this.apiUrl, {
+                            search: this.searchQuery
+                        }, {
+                            headers: {
+                                'x-api-key': this.apiKey
+                            }
+                        })
+                        .then((res) => {
+                            this.addresses = res.data.data || [];
+                        }).catch((e) => {
+                            console.error(e.message || e);
+                        });
+                    },
+
+                    searchFetch() {
+
+                        const requestOptions = {
+                            method: "POST",
+                            mode: 'cors',
+                            headers: { 
+                                "x-api-key": this.apiKey,
+                                "Content-Type": "application/json"
+                            },
+                            referrerPolicy: 'strict-origin-when-cross-origin',
+                            body: JSON.stringify({ search: this.searchQuery })
+                        };
+                       
+                        fetch(this.apiUrl, requestOptions)
+                            .then(response => {
+
+                                response.json().then(data => {
+                                    this.addresses = data.data || [];
+                                }).catch(e => { console.error(e) });
+
+                            }).catch(e => {
+                                console.error(e);
+                            });
+                    },
+
+                    searchXhr() {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open("POST", this.apiUrl);
+                        xhr.setRequestHeader("x-api-key", this.apiKey);
+                        xhr.setRequestHeader("Content-Type", "application/json");
+                        xhr.onreadystatechange = () => {
+                            if (xhr.readyState === XMLHttpRequest.DONE) {
+                                if (xhr.status === 200) {
+                                    const res = JSON.parse(xhr.response);
+                                    this.addresses = res.data || [];
+                                } else {
+                                    console.error('Failed request...');
+                                }
+                            }
+                        };
+                        xhr.send(JSON.stringify({ search: this.searchQuery }));
+                    }
+
+                },
+                mounted() {
+                    // mounted
+                },
+                template: "#auto-complete",
+            })
+
+            app.mount('#app');
+
+        })();
+    </script>
+
+</body>
+
+</html>
